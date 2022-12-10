@@ -1,6 +1,9 @@
 package runtime
 
-import "goemu/config"
+import (
+	"encoding/binary"
+	"goemu/config"
+)
 
 type CPU struct {
 	Regs [32]uint64
@@ -16,4 +19,16 @@ func NewCPU(code []uint8) *CPU {
 		Pc:   0,
 		Mem:  code,
 	}
+}
+
+func (cpu *CPU) Fetch() uint32 {
+	return binary.BigEndian.Uint32(cpu.Mem[cpu.Pc : cpu.Pc+4])
+}
+
+func (cpu *CPU) Decode() uint32 {
+	panic("unimplemented")
+}
+
+func (cpu *CPU) Execute(bits uint32) uint32 {
+	panic("unimplemented")
 }
