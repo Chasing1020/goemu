@@ -22,7 +22,8 @@ func NewCPU(code []uint8) *CPU {
 }
 
 func (cpu *CPU) Fetch() uint32 {
-	return binary.BigEndian.Uint32(cpu.Mem[cpu.Pc : cpu.Pc+4])
+	defer func() { cpu.Pc += 4 }()
+	return binary.LittleEndian.Uint32(cpu.Mem[cpu.Pc : cpu.Pc+4])
 }
 
 func (cpu *CPU) Decode() uint32 {

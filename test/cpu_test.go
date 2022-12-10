@@ -2,17 +2,23 @@ package test
 
 import (
 	"fmt"
+	"goemu/runtime"
+	"os"
 	"testing"
 )
 
 func TestCPUFetch(t *testing.T) {
-	a := uint8(1)
-	b := uint8(2)
-	c := uint8(3)
-	d := uint8(4)
+	filename := "a.bin"
+	bits, err := os.ReadFile("./asm/" + filename)
+	if err != nil {
+		panic(err)
+	}
+
+	cpu := runtime.NewCPU(bits)
+	fmt.Printf("%04x\n", cpu.Fetch())
 
 	// Combine the uint8 values using bit shifting and bitwise OR
-	result := (uint32(a) << 24) | (uint32(b) << 16) | (uint32(c) << 8) | uint32(d)
+	result := (uint32(bits[3]) << 24) | (uint32(bits[2]) << 16) | (uint32(bits[1]) << 8) | uint32(bits[0])
 
-	fmt.Println(result) // Output: 16909060
+	fmt.Printf("%04x", result)
 }
