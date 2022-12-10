@@ -2,6 +2,9 @@ package config
 
 const (
 	MemSize = 1024 * 1024 * 1024
+
+	KernelBase = 0x80000000
+	KernelEnd  = KernelBase + MemSize - 1
 )
 
 var (

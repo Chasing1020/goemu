@@ -8,7 +8,7 @@ import (
 type CPU struct {
 	Regs [32]uint64
 	Pc   uint64
-	Mem  []uint8
+	Mem  Memory
 }
 
 func NewCPU(code []uint8) *CPU {
