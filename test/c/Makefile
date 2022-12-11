@@ -18,12 +18,12 @@ BIN_FILES = $(wildcard *.bin)
 	${CC} ${CFLAGS} $^ -o $@
 
 .PHONY: hexdump
-hexdump: ${ELF_FILES}
+hexdump: ${ELF_FILES} ${BIN_FILES}
 	${HEXDUMP} -C $^
 
 .PHONY: objdump
-objdump: ${ELF_FILES}
-	@${OBJDUMP} -M no-aliases -d $^
+objdump:
+	@${OBJDUMP} -S jalr.bin
 
 .PHONY: clean
 clean:

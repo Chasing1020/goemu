@@ -16,43 +16,39 @@ var (
 
 	Pwd, _ = os.Getwd()
 	AsmDir = Pwd + "/asm/"
+	CDir   = Pwd + "/c/"
 )
 
-func compileElf(asmName string) {
-	cmd := exec.Command(CC, append(Cflags, "-o", asmName+".elf", asmName+".s")...)
-	cmd.Dir = Pwd + "/asm"
+func compileElf(dir, name string) {
+	if dir == AsmDir {
+		cmd := exec.Command(CC, append(Cflags, "-o", name+".elf", name+".s")...)
+		cmd.Dir = Pwd + "/asm"
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+	}
+	if dir == CDir {
+		cmd := exec.Command(CC, append(Cflags, "-o", name+".elf", name+".c")...)
+		cmd.Dir = Pwd + "/c"
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func objcopyBin(dir, name string) {
+	cmd := exec.Command(Objcopy, "-O", "binary", name+".elf", name+".bin")
+	cmd.Dir = dir
 	err := cmd.Run()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func objcopyBin(asmName string) {
-	cmd := exec.Command(Objcopy, "-O", "binary", asmName+".elf", asmName+".bin")
-	cmd.Dir = Pwd + "/asm"
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func createCPUFromCode(asmName, code string) *runtime.CPU {
-	if err := os.WriteFile(AsmDir+asmName+".s", []byte(code), 0666); err != nil {
-		panic(err)
-	}
-	compileElf(asmName)
-	objcopyBin(asmName)
-	bits, err := os.ReadFile(AsmDir + asmName + ".bin")
-	if err != nil {
-		panic(err)
-	}
-	return runtime.NewCPU(bits)
-}
-
-func createCPU(asmName string) *runtime.CPU {
-	compileElf(asmName)
-	objcopyBin(asmName)
-	bits, err := os.ReadFile(AsmDir + asmName + ".bin")
+func createCPU(dir, name string) *runtime.CPU {
+	compileElf(dir, name)
+	objcopyBin(dir, name)
+	bits, err := os.ReadFile(dir + name + ".bin")
 	if err != nil {
 		panic(err)
 	}

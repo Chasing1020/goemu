@@ -10,6 +10,7 @@ import (
 type CPU struct {
 	Regs [32]uint64
 	Pc   uint64
+	Size uint64
 	Mem  Memory
 	Csr  CSR
 	Level
@@ -18,10 +19,13 @@ type CPU struct {
 func NewCPU(code []uint8) *CPU {
 	regs := [32]uint64{}
 	regs[2] = config.KernelEnd
+	mem := make(Memory, config.MemSize)
+	copy(mem, code)
 	return &CPU{
 		Regs: regs,
 		Pc:   config.KernelBase,
-		Mem:  code,
+		Mem:  mem,
+		Size: uint64(len(code)),
 	}
 }
 
@@ -30,8 +34,12 @@ func NewCPU(code []uint8) *CPU {
 func (cpu *CPU) Run() error {
 	for {
 		inst, err := cpu.Fetch()
-		if err == io.EOF {
-			break
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				panic(err)
+			}
 		}
 		err = cpu.Execute(inst)
 		if err != nil {
@@ -42,7 +50,7 @@ func (cpu *CPU) Run() error {
 }
 
 func (cpu *CPU) Fetch() (inst uint32, err error) {
-	if cpu.Pc+4 > config.KernelBase+uint64(len(cpu.Mem)) {
+	if cpu.Pc+4 > config.KernelBase+cpu.Size {
 		return 0, io.EOF
 	}
 	if err = cpu.Mem.Check(cpu.Pc, 4); err != nil {
@@ -70,11 +78,11 @@ func (cpu *CPU) Execute(inst uint32) error {
 	funct7 := uint8((inst & 0xFE000000) >> 25)
 	csr := (inst & 0xFFF00000) >> 20
 
-	immI := uint64(int32(inst&0xFFF00000) >> 20)
+	immI := uint64(int32(inst&0xfff00000) >> 20)
 	immS := (uint64(inst&0xFE000000) >> 20) | (uint64(inst&0x00000F80) >> 7)
-	immB := (uint64(inst&0x80000000) >> 19) | (uint64(inst&0x00000080) << 4) | (uint64(inst&0x7E000000) >> 20) | (uint64(inst&0x00000F00) >> 7)
-	immJ := (uint64(inst&0x80000000) >> 11) | uint64(inst&0x000FF000) | (uint64(inst&0x00100000) >> 9) | (uint64(inst&0x7FE00000) >> 20)
-	immU := uint64(inst&0xFFFFF000) >> 12
+	immB := uint64(int32(inst&0x80000000)>>19) | uint64(inst&0x80<<4) | uint64(inst>>20&0x7E0) | uint64(inst>>7&0x1E)
+	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((uint64(inst) >> 9) & 0x800) | ((uint64(inst) >> 20) & 0x7FE)
+	immU := uint64(inst & 0xFFFFF000)
 
 	_ = csr // TODO: currently unused, delete this line later
 
@@ -254,7 +262,7 @@ func (cpu *CPU) Execute(inst uint32) error {
 			return NewIllegalInstErr(inst)
 		}
 	case 0b0110111: // lui
-		cpu.Regs[rd] = immU << 12
+		cpu.Regs[rd] = immU
 	case 0b0111011:
 		switch funct3 {
 		case 0x000:
@@ -309,16 +317,29 @@ func (cpu *CPU) Execute(inst uint32) error {
 		default:
 			return NewIllegalInstErr(inst)
 		}
-	case 0b1100111: // jalr
-		nextPc = (cpu.Regs[rs1] + immI) & ^(uint64(1))
-		cpu.Regs[rd] = cpu.Pc + 4
+	case 0b1100111: // fixme jalr
+		t := cpu.Pc + 4
+		imm := uint64(int64(int32(inst&0xfff00000)) >> 20)
+		nextPc = (cpu.Regs[rs1] + imm) & ^(uint64(1))
+		cpu.Regs[rd] = t
 	case 0b1101111: // jal
 		cpu.Regs[rd] = cpu.Pc + 4
 		nextPc = cpu.Pc + immJ
+		Debug("cpu.Regs[rd]", cpu.Regs[rd])
+
 	default:
 		return NewIllegalInstErr(inst)
 	}
 	return nil
+}
+
+func (cpu *CPU) debug(inst uint32) {
+	fmt.Printf("inst: %08x, Pc: %08x\n", inst, cpu.Pc)
+	fmt.Printf("inst: %032b, Pc: %032b\n", inst, cpu.Pc)
+}
+
+func Debug(name string, value uint64) {
+	fmt.Printf("%s: %x(%032b)\n", name, value, value)
 }
 
 func NewIllegalInstErr(inst uint32) error {
