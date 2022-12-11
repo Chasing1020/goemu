@@ -9,6 +9,8 @@ type CPU struct {
 	Regs [32]uint64
 	Pc   uint64
 	Mem  Memory
+	Csr  CSR
+	Level
 }
 
 func NewCPU(code []uint8) *CPU {

@@ -8,7 +8,7 @@ const (
 	Machine    Level = 0b11
 )
 
-// Machine-level CSRs
+// Machine Level CSRs
 const (
 	// Machine information registers
 	mvendorid  = 0xF11 // Vendor ID
@@ -35,10 +35,9 @@ const (
 	mip      = 0x344 // Machine interrupt pending
 	mtinst   = 0x34A // Machine trap instruction (transformed)
 	mtval2   = 0x34B // Machine bad guest physical address
-
 )
 
-// Supervisor-level CSRs
+// Supervisor Level CSRs
 const (
 	// Supervisor Trap Setup
 	sstatus    = 0x100 // Supervisor status
@@ -58,3 +57,15 @@ const (
 	// Supervisor Protection and Translation
 	satp = 0x180 // Supervisor address translation and protection
 )
+
+const CsrNum = 0xFFF + 1
+
+type CSR [CsrNum]uint64
+
+func (c *CSR) Load(addr uint64) (uint64, error) {
+	panic("unimplemented")
+}
+
+func (c *CSR) Store(addr, data uint64) error {
+	panic("unimplemented")
+}
