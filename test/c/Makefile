@@ -1,6 +1,6 @@
 CROSS_COMPILE = riscv64-unknown-elf-
-CFLAGS = -nostdlib -fno-builtin -march=rv64g -mabi=lp64 -g -Wall -Ttext=0x80000000
-GDB = ${CROSS_COMPILE}gdb
+CFLAGS = -march=rv64g -ffreestanding -nostdlib -static -Wl,-Ttext=0 -O2
+GDB = gdb-multiarch
 CC  = ${CROSS_COMPILE}gcc
 OBJCOPY = ${CROSS_COMPILE}objcopy
 OBJDUMP = ${CROSS_COMPILE}objdump
@@ -14,16 +14,16 @@ BIN_FILES = $(wildcard *.bin)
 %.bin: %.elf
 	${OBJCOPY} -O binary $^ $@
 
-%.elf: %.s
+%.elf: %.c
 	${CC} ${CFLAGS} $^ -o $@
 
 .PHONY: hexdump
-hexdump: ${ELF_FILES} ${BIN_FILES}
+hexdump: ${ELF_FILES}
 	${HEXDUMP} -C $^
 
 .PHONY: objdump
-objdump: ${ELF_FILES} ${BIN_FILES}
-	@${OBJDUMP} -S -M no-aliases $^
+objdump: ${ELF_FILES}
+	@${OBJDUMP} -M no-aliases -d $^
 
 .PHONY: clean
 clean:
