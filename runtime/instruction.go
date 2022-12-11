@@ -1,5 +1,8 @@
 package runtime
 
+// Instruction includes fields for all possible instruction types
+// can be a convenient way to represent RISC-V instructions
+// not all fields will be valid for all instruction types
 type Instruction struct {
 	Opcode uint8
 	Rs1    uint8
@@ -33,21 +36,29 @@ const (
 	LB
 	LH
 	LW
+	LD
 	LBU
 	LHU
+	LWU
 	SB
 	SH
 	SW
+	SD
 	ADDI
 	SLTI
 	SLTIU
 	XORI
 	ORI
 	ANDI
+	ADDIW
+	SLLIW
+	SRLIW
+	SRAIW
 	SLLI
 	SRLI
 	SRAI
 	ADD
+	MUL
 	SUB
 	SLL
 	SLT
@@ -71,6 +82,7 @@ const (
 	WFI
 )
 
+// ParseInstruction extracts the instruction's opcode, register fields, and immediate values by masking and shifting the input bits.
 func ParseInstruction(bits uint32) (inst Instruction) {
 	inst.Opcode = uint8(bits & 0x0000007F)
 	inst.Rs1 = uint8((bits & 0x000F8000) >> 15)

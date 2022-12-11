@@ -21,9 +21,10 @@ func NewCPU(code []uint8) *CPU {
 	}
 }
 
-func (cpu *CPU) Fetch() uint32 {
-	defer func() { cpu.Pc += 4 }()
-	return binary.LittleEndian.Uint32(cpu.Mem[cpu.Pc : cpu.Pc+4])
+func (cpu *CPU) Fetch() Instruction {
+	bits := binary.LittleEndian.Uint32(cpu.Mem[cpu.Pc : cpu.Pc+4])
+	cpu.Pc += 4
+	return ParseInstruction(bits)
 }
 
 func (cpu *CPU) Decode() uint32 {
