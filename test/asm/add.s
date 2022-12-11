@@ -2,5 +2,6 @@
 .global	_start
 
 _start:
-    addi x29, x0, 114
-    addi x30, x0, 514
+	li x6, 1		# x6 = 1
+	li x7, -2		# x7 = -2
+	add x5, x6, x7	# x5 = x6 + x7
