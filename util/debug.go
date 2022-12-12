@@ -11,11 +11,11 @@ func ParseInst(inst uint64) {
 	funct7 := uint8((inst & 0xFE000000) >> 25)
 	csr := (inst & 0xFFF00000) >> 20
 
-	immI := uint64(int32(inst&0xfff00000) >> 20)
-	immS := (uint64(inst&0xFE000000) >> 20) | (uint64(inst&0x00000F80) >> 7)
-	immB := uint64(int32(inst&0x80000000)>>19) | uint64(inst&0x80<<4) | uint64(inst>>20&0x7E0) | uint64(inst>>7&0x1E)
-	immJ := uint64(int64(int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xff000) | ((uint64(inst) >> 9) & 0x800) | ((uint64(inst) >> 20) & 0x7fe)
-	immU := uint64(inst & 0xFFFFF000)
+	immI := uint64(int32(inst&0xFFF00000) >> 20)
+	immS := (inst&0xFE000000)>>20 | (inst & 0x00000F80 >> 7)
+	immB := uint64(int32(inst&0x80000000)>>19) | (inst & 0x80 << 4) | (inst >> 20 & 0x7E0) | (inst >> 7 & 0x1E)
+	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((inst >> 9) & 0x800) | ((inst >> 20) & 0x7FE)
+	immU := inst & 0xFFFFF000
 	fmt.Printf("%s: %08x(%032b)\n", "inst  ", inst, inst)
 	fmt.Printf("%s: %02x(%07b)\n", "opcode", opcode, opcode)
 	fmt.Printf("%s: %02x(%05b)\n", "rs1   ", rs1, rs1)

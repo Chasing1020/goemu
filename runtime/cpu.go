@@ -300,7 +300,7 @@ func (cpu *CPU) Execute(inst uint64) error {
 			if cpu.Regs[rs1] != cpu.Regs[rs2] {
 				nextPc = cpu.Pc + immB
 			}
-		case 0b010: // blt
+		case 0b100: // blt
 			if int64(cpu.Regs[rs1]) < int64(cpu.Regs[rs2]) {
 				nextPc = cpu.Pc + immB
 			}
@@ -319,15 +319,14 @@ func (cpu *CPU) Execute(inst uint64) error {
 		default:
 			return NewIllegalInstErr(inst)
 		}
-	case 0b1100111: // fixme jalr
+	case 0b1100111: // jalr
 		t := cpu.Pc + 4
-		imm := uint64(int64(int32(inst&0xfff00000)) >> 20)
+		imm := uint64(int32(inst&0xFFF00000) >> 20)
 		nextPc = (cpu.Regs[rs1] + imm) & ^(uint64(1))
 		cpu.Regs[rd] = t
 	case 0b1101111: // jal
 		cpu.Regs[rd] = cpu.Pc + 4
 		nextPc = cpu.Pc + immJ
-		Debug("cpu.Regs[rd]", cpu.Regs[rd])
 
 	default:
 		return NewIllegalInstErr(inst)

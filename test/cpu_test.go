@@ -72,6 +72,14 @@ func TestAuipc(t *testing.T) {
 	assertEq(t, x5, cpu.Regs[5])
 }
 
+func TestBlt(t *testing.T) {
+	cpu := createCPU(AsmDir, "blt")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 1, cpu.Regs[8])
+}
+
 func TestBne(t *testing.T) {
 	cpu := createCPU(AsmDir, "bne")
 	if err := cpu.Run(); err != nil {
@@ -90,6 +98,63 @@ func TestJalr(t *testing.T) {
 	}
 	assertEq(t, cpu.Regs[5], cpu.Regs[8])
 	assertEq(t, 5, cpu.Regs[6])
+}
+
+func TestLa(t *testing.T) {
+	cpu := createCPU(AsmDir, "la")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 114514, cpu.Regs[6])
+}
+
+func TestLb(t *testing.T) {
+	cpu := createCPU(AsmDir, "lb")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 0x34, cpu.Regs[7])
+}
+
+func TestLi(t *testing.T) {
+	cpu := createCPU(AsmDir, "li")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 1<<(32<<(^uint32(0)>>63)-1)-1, cpu.Regs[7])
+}
+
+func TestLui(t *testing.T) {
+	cpu := createCPU(AsmDir, "lui")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 0x12345<<12+0x678, cpu.Regs[5])
+}
+
+func TestNeg(t *testing.T) {
+	cpu := createCPU(AsmDir, "neg")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, cpu.Regs[7], cpu.Regs[5])
+}
+
+func TestNot(t *testing.T) {
+	cpu := createCPU(AsmDir, "not")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, cpu.Regs[7], cpu.Regs[5])
+}
+
+func TestSb(t *testing.T) {
+	cpu := createCPU(AsmDir, "sb")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	// fixme: TestSb assertEq failed: expected 18, got 267461547
+	assertEq(t, 0x12, cpu.Regs[6])
 }
 
 func TestFib(t *testing.T) {

@@ -38,7 +38,7 @@ func (m *Memory) Store(addr, bytes uint64, data uint64) error {
 	index := addr - config.KernelBase
 	for i := uint64(0); i < bytes; i++ {
 		offset := 8 * i
-		(*m)[index+i] = uint8((data >> offset) & 0xff)
+		(*m)[index+i] = uint8((data >> offset) & 0xFF)
 	}
 	return nil
 }
