@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"goemu/config"
+	"goemu/util"
 	"io"
 )
 
@@ -43,13 +44,14 @@ func (cpu *CPU) Run() error {
 		}
 		err = cpu.Execute(inst)
 		if err != nil {
+			util.ParseInst(inst)
 			panic(err)
 		}
 	}
 	return nil
 }
 
-func (cpu *CPU) Fetch() (inst uint32, err error) {
+func (cpu *CPU) Fetch() (inst uint64, err error) {
 	if cpu.Pc+4 > config.KernelBase+cpu.Size {
 		return 0, io.EOF
 	}
@@ -57,7 +59,7 @@ func (cpu *CPU) Fetch() (inst uint32, err error) {
 		return
 	}
 	index := cpu.Pc - config.KernelBase
-	inst = binary.LittleEndian.Uint32(cpu.Mem[index : index+4])
+	inst = uint64(binary.LittleEndian.Uint32(cpu.Mem[index : index+4]))
 	return
 }
 
@@ -66,7 +68,7 @@ func (cpu *CPU) UpdatePC(nextPc *uint64) {
 }
 
 // Execute function is part of the CPU struct and is responsible for executing a given instruction
-func (cpu *CPU) Execute(inst uint32) error {
+func (cpu *CPU) Execute(inst uint64) error {
 	nextPc := cpu.Pc + 4 // add 4 by default
 	defer cpu.UpdatePC(&nextPc)
 
@@ -79,10 +81,10 @@ func (cpu *CPU) Execute(inst uint32) error {
 	csr := (inst & 0xFFF00000) >> 20
 
 	immI := uint64(int32(inst&0xfff00000) >> 20)
-	immS := (uint64(inst&0xFE000000) >> 20) | (uint64(inst&0x00000F80) >> 7)
-	immB := uint64(int32(inst&0x80000000)>>19) | uint64(inst&0x80<<4) | uint64(inst>>20&0x7E0) | uint64(inst>>7&0x1E)
-	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((uint64(inst) >> 9) & 0x800) | ((uint64(inst) >> 20) & 0x7FE)
-	immU := uint64(inst & 0xFFFFF000)
+	immS := (inst&0xFE000000)>>20 | (inst & 0x00000F80 >> 7)
+	immB := uint64(int32(inst&0x80000000)>>19) | (inst & 0x80 << 4) | (inst >> 20 & 0x7E0) | (inst >> 7 & 0x1E)
+	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((inst >> 9) & 0x800) | ((inst >> 20) & 0x7FE)
+	immU := inst & 0xFFFFF000
 
 	_ = csr // TODO: currently unused, delete this line later
 
@@ -342,6 +344,6 @@ func Debug(name string, value uint64) {
 	fmt.Printf("%s: %x(%032b)\n", name, value, value)
 }
 
-func NewIllegalInstErr(inst uint32) error {
+func NewIllegalInstErr(inst uint64) error {
 	return fmt.Errorf("unknown instruction format: %x", inst)
 }

@@ -68,8 +68,8 @@ func TestAuipc(t *testing.T) {
 	}
 	x5 := cpu.Pc + 0x123<<12 - 8
 	x6 := cpu.Pc - 4
-	assertEq(t, uint64(x6), cpu.Regs[6])
-	assertEq(t, uint64(x5), cpu.Regs[5])
+	assertEq(t, x6, cpu.Regs[6])
+	assertEq(t, x5, cpu.Regs[5])
 }
 
 func TestBne(t *testing.T) {
@@ -84,11 +84,12 @@ func TestBne(t *testing.T) {
 }
 
 func TestJalr(t *testing.T) {
-	cpu := createCPU(CDir, "jalr")
+	cpu := createCPU(AsmDir, "jalr")
 	if err := cpu.Run(); err != nil {
 		t.Fatal(err)
 	}
-	// fixme: find the bug of the command `jalr`
+	assertEq(t, cpu.Regs[5], cpu.Regs[8])
+	assertEq(t, 5, cpu.Regs[6])
 }
 
 func TestFib(t *testing.T) {
