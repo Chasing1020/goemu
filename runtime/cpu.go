@@ -210,7 +210,7 @@ func (cpu *CPU) Execute(inst uint64) error {
 			if err != nil {
 				return err
 			}
-		case 0x011: // sd
+		case 0b011: // sd
 			err := cpu.Mem.Store(addr, 8, cpu.Regs[rs2])
 			if err != nil {
 				return err
@@ -267,7 +267,7 @@ func (cpu *CPU) Execute(inst uint64) error {
 		cpu.Regs[rd] = immU
 	case 0b0111011:
 		switch funct3 {
-		case 0x000:
+		case 0b000:
 			switch funct7 {
 			case 0b0000000: // addw
 				cpu.Regs[rd] = uint64(int64(int32(cpu.Regs[rs1] + cpu.Regs[rs2])))

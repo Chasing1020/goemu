@@ -116,6 +116,15 @@ func TestLb(t *testing.T) {
 	assertEq(t, 0x34, cpu.Regs[7])
 }
 
+func TestLh(t *testing.T) {
+	cpu := createCPU(AsmDir, "lh")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 0x78, cpu.Regs[6])
+	assertEq(t, 0x5678, cpu.Regs[7])
+}
+
 func TestLi(t *testing.T) {
 	cpu := createCPU(AsmDir, "li")
 	if err := cpu.Run(); err != nil {
