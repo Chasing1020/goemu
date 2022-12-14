@@ -1,5 +1,7 @@
 package runtime
 
+import "fmt"
+
 type Level uint8
 
 const (
@@ -62,10 +64,39 @@ const CsrNum = 0xFFF + 1
 
 type CSR [CsrNum]uint64
 
+var sstatusMask uint64 = 0x0 // todo: implement me
+
 func (c *CSR) Load(addr uint64) (uint64, error) {
-	panic("unimplemented")
+	if addr > uint64(len(*c)) || addr < 0 {
+		return 0, fmt.Errorf("invalid csr address: %x", addr)
+	}
+
+	switch addr {
+	case sie:
+		return (*c)[mie] & (*c)[mideleg], nil
+	case sip:
+		return (*c)[mip] & (*c)[mideleg], nil
+	case sstatus:
+		return (*c)[mstatus] & sstatusMask, nil
+	default:
+		return (*c)[addr], fmt.Errorf("unknown csr target addr: %x", addr)
+	}
 }
 
 func (c *CSR) Store(addr, data uint64) error {
-	panic("unimplemented")
+	if addr > uint64(len(*c)) || addr < 0 {
+		return fmt.Errorf("invalid csr address: %x", addr)
+	}
+
+	switch addr {
+	case sie:
+		(*c)[mie] = ((*c)[mie] & ^(*c)[mideleg]) | (data & (*c)[mideleg])
+	case sip:
+		(*c)[mip] = ((*c)[mip] & ^(*c)[mideleg]) | (data & (*c)[mideleg])
+	case sstatus:
+		(*c)[mstatus] = ((*c)[mstatus] & ^uint64(sstatusMask)) | (data & sstatusMask)
+	default:
+		(*c)[addr] = data
+	}
+	return nil
 }
