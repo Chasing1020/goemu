@@ -11,7 +11,7 @@ import (
 type CPU struct {
 	Regs [32]uint64
 	Pc   uint64
-	Size uint64
+	Size uint64 // todo: delete this field
 	Mem  Memory
 	Csr  CSR
 	Level

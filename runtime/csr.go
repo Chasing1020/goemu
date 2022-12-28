@@ -67,7 +67,7 @@ type CSR [CsrNum]uint64
 var sstatusMask uint64 = 0x0 // todo: implement me
 
 func (c *CSR) Load(addr uint64) (uint64, error) {
-	if addr > uint64(len(*c)) || addr < 0 {
+	if addr > CsrNum || addr < 0 {
 		return 0, fmt.Errorf("invalid csr address: %x", addr)
 	}
 
@@ -84,7 +84,7 @@ func (c *CSR) Load(addr uint64) (uint64, error) {
 }
 
 func (c *CSR) Store(addr, data uint64) error {
-	if addr > uint64(len(*c)) || addr < 0 {
+	if addr > CsrNum || addr < 0 {
 		return fmt.Errorf("invalid csr address: %x", addr)
 	}
 
@@ -94,7 +94,7 @@ func (c *CSR) Store(addr, data uint64) error {
 	case sip:
 		(*c)[mip] = ((*c)[mip] & ^(*c)[mideleg]) | (data & (*c)[mideleg])
 	case sstatus:
-		(*c)[mstatus] = ((*c)[mstatus] & ^uint64(sstatusMask)) | (data & sstatusMask)
+		(*c)[mstatus] = ((*c)[mstatus] & ^sstatusMask) | (data & sstatusMask)
 	default:
 		(*c)[addr] = data
 	}
