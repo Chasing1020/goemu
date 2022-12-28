@@ -60,11 +60,35 @@ const (
 	satp = 0x180 // Supervisor address translation and protection
 )
 
+// mstatus and sstatus field mask
+const (
+	sieMask            = 1 << 1
+	mieMask            = 1 << 3
+	spieMask           = 1 << 5
+	ubeMask            = 1 << 6
+	mpieMask           = 1 << 7
+	sppMask            = 1 << 8
+	vsMask             = 0b11 << 9
+	mppMask            = 0b11 << 11
+	fsMask             = 0b11 << 13
+	xsMask             = 0b11 << 15
+	mprvMask           = 1 << 17
+	sumMask            = 1 << 18
+	mxrMask            = 1 << 19
+	tvmMask            = 1 << 20
+	twMask             = 1 << 21
+	tsrMask            = 1 << 22
+	uxlMask            = 0b11 << 32
+	sxlMask            = 0b11 << 34
+	sbeMask            = 1 << 36
+	mbeMask            = 1 << 37
+	sdMask             = 1 << 63
+	sstatusMask uint64 = sieMask | spieMask | ubeMask | sppMask | fsMask | xsMask | sumMask | mxrMask | uxlMask | sdMask
+)
+
 const CsrNum = 0xFFF + 1
 
 type CSR [CsrNum]uint64
-
-var sstatusMask uint64 = 0x0 // todo: implement me
 
 func (c *CSR) Load(addr uint64) (uint64, error) {
 	if addr > CsrNum || addr < 0 {
