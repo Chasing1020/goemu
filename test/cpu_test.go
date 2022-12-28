@@ -1,6 +1,8 @@
 package test
 
 import (
+	"goemu/runtime"
+	"runtime/debug"
 	"testing"
 )
 
@@ -11,6 +13,16 @@ func TestCompile(t *testing.T) {
 func TestObjcopyBin(t *testing.T) {
 	compileElf(AsmDir, "addi")
 	objcopyBin(AsmDir, "addi")
+}
+
+type Number interface {
+	int8 | int16 | int32 | int64 | int | uint8 | uint16 | uint32 | uint64 | uint
+}
+
+func assertEq[Number comparable](t *testing.T, expected, actual Number) {
+	if expected != actual {
+		t.Errorf("%s assertEq failed: expected %+v, got %+v\n%s", t.Name(), expected, actual, debug.Stack())
+	}
 }
 
 func TestAddi(t *testing.T) {
@@ -155,6 +167,19 @@ func TestNot(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertEq(t, cpu.Regs[7], cpu.Regs[5])
+}
+
+func TestCsr(t *testing.T) {
+	cpu := createCPU(AsmDir, "csr")
+	if err := cpu.Run(); err != nil {
+		t.Fatal(err)
+	}
+	assertEq(t, 1, cpu.Csr[runtime.Mstatus])
+	assertEq(t, 2, cpu.Csr[runtime.Mtvec])
+	assertEq(t, 3, cpu.Csr[runtime.Mepc])
+	assertEq(t, 0, cpu.Csr[runtime.Sstatus])
+	assertEq(t, 5, cpu.Csr[runtime.Stvec])
+	assertEq(t, 5, cpu.Csr[runtime.Sepc])
 }
 
 func TestSb(t *testing.T) {

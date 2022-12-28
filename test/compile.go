@@ -4,8 +4,6 @@ import (
 	"goemu/runtime"
 	"os"
 	"os/exec"
-	"runtime/debug"
-	"testing"
 )
 
 var (
@@ -53,20 +51,4 @@ func createCPU(dir, name string) *runtime.CPU {
 		panic(err)
 	}
 	return runtime.NewCPU(bits)
-}
-
-type Number interface {
-	int8 | int16 | int32 | int64 | int | uint8 | uint16 | uint32 | uint64 | uint
-}
-
-func assertEq[Number comparable](t *testing.T, expected, actual Number) {
-	if expected != actual {
-		t.Errorf("%s assertEq failed: expected %+v, got %+v\n%s", t.Name(), expected, actual, debug.Stack())
-	}
-}
-
-func assertNeq[Number comparable](t *testing.T, expected, actual Number) {
-	if expected == actual {
-		t.Errorf("%s assertNeq failed: expected %+v, got %+v\n%s", t.Name(), expected, actual, debug.Stack())
-	}
 }

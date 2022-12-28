@@ -78,15 +78,13 @@ func (cpu *CPU) Execute(inst uint64) error {
 	rd := uint8((inst & 0x00000F80) >> 7)
 	funct3 := uint8((inst & 0x00007000) >> 12)
 	funct7 := uint8((inst & 0xFE000000) >> 25)
-	csr := (inst & 0xFFF00000) >> 20
+	csrAddr := (inst & 0xFFF00000) >> 20
 
 	immI := uint64(int32(inst&0xfff00000) >> 20)
 	immS := (inst&0xFE000000)>>20 | (inst & 0x00000F80 >> 7)
 	immB := uint64(int32(inst&0x80000000)>>19) | (inst & 0x80 << 4) | (inst >> 20 & 0x7E0) | (inst >> 7 & 0x1E)
 	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((inst >> 9) & 0x800) | ((inst >> 20) & 0x7FE)
 	immU := inst & 0xFFFFF000
-
-	_ = csr // TODO: currently unused, delete this line later
 
 	switch opcode {
 	case 0b0000000: // nop
@@ -327,7 +325,65 @@ func (cpu *CPU) Execute(inst uint64) error {
 	case 0b1101111: // jal
 		cpu.Regs[rd] = cpu.Pc + 4
 		nextPc = cpu.Pc + immJ
-
+	case 0b1110011:
+		switch funct3 {
+		case 0b001: // csrrw
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			if err = cpu.Csr.Store(csrAddr, cpu.Regs[rs1]); err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+		case 0b010: // csrrs
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			if err = cpu.Csr.Store(csrAddr, data|cpu.Regs[rs1]); err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+		case 0b011: // csrrc
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			if err = cpu.Csr.Store(csrAddr, data&(^cpu.Regs[rs1])); err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+		case 0b101: // csrrwi
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+			if err = cpu.Csr.Store(csrAddr, uint64(rs1)); err != nil {
+				return err
+			}
+		case 0b110: // csrrsi
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			if err = cpu.Csr.Store(csrAddr, data|uint64(rs1)); err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+		case 0b111: // csrrci
+			data, err := cpu.Csr.Load(csrAddr)
+			if err != nil {
+				return err
+			}
+			if err = cpu.Csr.Store(csrAddr, data&(^uint64(rs1))); err != nil {
+				return err
+			}
+			cpu.Regs[rd] = data
+		default:
+			return NewIllegalInstErr(inst)
+		}
 	default:
 		return NewIllegalInstErr(inst)
 	}
