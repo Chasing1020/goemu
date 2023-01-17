@@ -6,6 +6,8 @@ import (
 	"goemu/config"
 	"goemu/util"
 	"io"
+	"strconv"
+	"strings"
 )
 
 type CPU struct {
@@ -280,8 +282,25 @@ func (cpu *CPU) Execute(inst uint64) error {
 			switch funct7 {
 			case 0b0000000: // srlw
 				cpu.Regs[rd] = uint64(int32(uint32(cpu.Regs[rs1]) >> rs2))
+			case 0b0000001: // divu
+				if cpu.Regs[rs2] == 0 { // divisor equals zero
+					cpu.Regs[rd] = 0xFFFFFFFFFFFFFFFF
+				} else {
+					cpu.Regs[rd] = cpu.Regs[rs1] / cpu.Regs[rs2]
+				}
 			case 0b0100000: // sraw
 				cpu.Regs[rd] = uint64(int32(cpu.Regs[rs1]) >> int32(rs2))
+			default:
+				return NewIllegalInstErr(inst)
+			}
+		case 0b111:
+			switch funct7 {
+			case 0b0000001: // remuw
+				if cpu.Regs[rs2] == 0 { // divisor equals zero
+					cpu.Regs[rd] = cpu.Regs[rs1]
+				} else {
+					cpu.Regs[rd] = uint64(int32(cpu.Regs[rs1] % cpu.Regs[rs2]))
+				}
 			default:
 				return NewIllegalInstErr(inst)
 			}
@@ -327,6 +346,52 @@ func (cpu *CPU) Execute(inst uint64) error {
 		nextPc = cpu.Pc + immJ
 	case 0b1110011:
 		switch funct3 {
+		case 0b000:
+			switch funct7 {
+			case 0b0001000: // sret
+				sstatus, err := cpu.Csr.Load(Sstatus)
+				if err != nil {
+					return err
+				}
+				cpu.Level = Level((sstatus & SppMask) >> 8)
+				spie := (sstatus & SpieMask) >> 5
+				sstatus = (sstatus & ^uint64(SieMask)) | (spie << 1)
+				sstatus |= SpieMask
+				sstatus &= ^uint64(SppMask)
+				err = cpu.Csr.Store(Sstatus, sstatus)
+				if err != nil {
+					return err
+				}
+				sepc, err := cpu.Csr.Load(Sepc)
+				if err != nil {
+					return err
+				}
+				nextPc = sepc &^ uint64(0b11)
+			case 0b0011000: // mret
+				mstatus, err := cpu.Csr.Load(Mstatus)
+				if err != nil {
+					return err
+				}
+				cpu.Level = Level((mstatus & MppMask) >> 11)
+				mpie := (mstatus & MpieMask) >> 7
+				mstatus = (mstatus & ^uint64(MieMask)) | (mpie << 3)
+				mstatus |= MpieMask
+				mstatus &= ^uint64(MppMask)
+				mstatus &= ^uint64(MprvMask)
+				err = cpu.Csr.Store(Mstatus, mstatus)
+				if err != nil {
+					return err
+				}
+				mepc, err := cpu.Csr.Load(Mepc)
+				if err != nil {
+					return err
+				}
+				nextPc = mepc & ^uint64(0b11)
+			case 0b0001001: //sfence.vma
+				return nil
+			default:
+				return NewIllegalInstErr(inst)
+			}
 		case 0b001: // csrrw
 			data, err := cpu.Csr.Load(csrAddr)
 			if err != nil {
@@ -390,13 +455,40 @@ func (cpu *CPU) Execute(inst uint64) error {
 	return nil
 }
 
+var (
+	AbiMap = [32]string{
+		"zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
+		"s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
+		"a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7",
+		"s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
+	}
+)
+
+// GetReg is a method of the CPU struct that takes a string input and returns an uint64 value and an error.
+func (cpu *CPU) GetReg(s string) (data uint64, err error) {
+	i := -1
+	if s[0] == 'x' || s[0] == 'X' {
+		i, err = strconv.Atoi(s[1:])
+		if err != nil {
+			return
+		}
+	} else {
+		for k, v := range AbiMap {
+			if strings.EqualFold(v, s) {
+				i = k
+			}
+		}
+	}
+	if i < 0 || i >= 32 {
+		return 0, fmt.Errorf("unknown register format: %s", s)
+	}
+	data = cpu.Regs[i]
+	return
+}
+
 func (cpu *CPU) debug(inst uint32) {
 	fmt.Printf("inst: %08x, Pc: %08x\n", inst, cpu.Pc)
 	fmt.Printf("inst: %032b, Pc: %032b\n", inst, cpu.Pc)
-}
-
-func Debug(name string, value uint64) {
-	fmt.Printf("%s: %x(%032b)\n", name, value, value)
 }
 
 func NewIllegalInstErr(inst uint64) error {
