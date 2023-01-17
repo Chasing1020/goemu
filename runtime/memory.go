@@ -7,10 +7,7 @@ import (
 
 type Memory []uint8
 
-func (m *Memory) Check(addr, bytes uint64) error {
-	if addr < config.KernelBase || addr > config.KernelEnd {
-		return fmt.Errorf("invalid memory address: %x", addr)
-	}
+func (m *Memory) Check(bytes uint64) error {
 	switch bytes {
 	case 1, 2, 4, 8:
 		return nil
@@ -20,7 +17,7 @@ func (m *Memory) Check(addr, bytes uint64) error {
 }
 
 func (m *Memory) Load(addr, bytes uint64) (uint64, error) {
-	if err := m.Check(addr, bytes); err != nil {
+	if err := m.Check(bytes); err != nil {
 		return 0, err
 	}
 	index := addr - config.KernelBase
@@ -31,8 +28,8 @@ func (m *Memory) Load(addr, bytes uint64) (uint64, error) {
 	return data, nil
 }
 
-func (m *Memory) Store(addr, bytes uint64, data uint64) error {
-	if err := m.Check(addr, bytes); err != nil {
+func (m *Memory) Store(addr, bytes, data uint64) error {
+	if err := m.Check(bytes); err != nil {
 		return err
 	}
 	index := addr - config.KernelBase

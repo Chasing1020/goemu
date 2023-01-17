@@ -1,9 +1,9 @@
 package runtime
 
 import (
-	"encoding/binary"
 	"fmt"
 	"goemu/config"
+	"goemu/hw/uart"
 	"goemu/util"
 	"io"
 	"strconv"
@@ -13,8 +13,8 @@ import (
 type CPU struct {
 	Regs [32]uint64
 	Pc   uint64
-	Size uint64 // todo: delete this field
-	Mem  Memory
+	Size uint64
+	Bus  Bus
 	Csr  CSR
 	Level
 }
@@ -24,11 +24,17 @@ func NewCPU(code []uint8) *CPU {
 	regs[2] = config.KernelEnd
 	mem := make(Memory, config.MemSize)
 	copy(mem, code)
+	u := uart.NewUart()
+
 	return &CPU{
 		Regs: regs,
 		Pc:   config.KernelBase,
-		Mem:  mem,
 		Size: uint64(len(code)),
+		Bus: Bus{
+			Mem:  &mem,
+			Uart: u,
+		},
+		Level: Machine,
 	}
 }
 
@@ -39,7 +45,7 @@ func (cpu *CPU) Run() error {
 		inst, err := cpu.Fetch()
 		if err != nil {
 			if err == io.EOF {
-				break
+				return nil
 			} else {
 				panic(err)
 			}
@@ -54,15 +60,10 @@ func (cpu *CPU) Run() error {
 }
 
 func (cpu *CPU) Fetch() (inst uint64, err error) {
-	if cpu.Pc+4 > config.KernelBase+cpu.Size {
+	if cpu.Pc < config.KernelBase || cpu.Pc >= config.KernelBase+cpu.Size {
 		return 0, io.EOF
 	}
-	if err = cpu.Mem.Check(cpu.Pc, 4); err != nil {
-		return
-	}
-	index := cpu.Pc - config.KernelBase
-	inst = uint64(binary.LittleEndian.Uint32(cpu.Mem[index : index+4]))
-	return
+	return cpu.Bus.Load(cpu.Pc, 4)
 }
 
 func (cpu *CPU) UpdatePC(nextPc *uint64) {
@@ -84,53 +85,52 @@ func (cpu *CPU) Execute(inst uint64) error {
 
 	immI := uint64(int32(inst&0xfff00000) >> 20)
 	immS := (inst&0xFE000000)>>20 | (inst & 0x00000F80 >> 7)
-	immB := uint64(int32(inst&0x80000000)>>19) | (inst & 0x80 << 4) | (inst >> 20 & 0x7E0) | (inst >> 7 & 0x1E)
+	immB := uint64(int64(int32(inst&0x80000000)>>19)) | (inst & 0x80 << 4) | (inst >> 20 & 0x7E0) | (inst >> 7 & 0x1E)
 	immJ := uint64((int32(uint64(inst)&0x80000000))>>11) | (uint64(inst) & 0xFF000) | ((inst >> 9) & 0x800) | ((inst >> 20) & 0x7FE)
 	immU := inst & 0xFFFFF000
 
 	switch opcode {
-	case 0b0000000: // nop
 	case 0b0000011:
 		addr := cpu.Regs[rs1] + immI
 		switch funct3 {
 		case 0b000: // lb
-			val, err := cpu.Mem.Load(addr, 1)
+			val, err := cpu.Bus.Load(addr, 1)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = uint64(int8(val))
 		case 0b001: // lh
-			val, err := cpu.Mem.Load(addr, 2)
+			val, err := cpu.Bus.Load(addr, 2)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = uint64(int16(val))
 		case 0b010: // lw
-			val, err := cpu.Mem.Load(addr, 4)
+			val, err := cpu.Bus.Load(addr, 4)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = uint64(int32(val))
 		case 0b011: // ld
-			val, err := cpu.Mem.Load(addr, 8)
+			val, err := cpu.Bus.Load(addr, 8)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = val
 		case 0b100: // lbu
-			val, err := cpu.Mem.Load(addr, 1)
+			val, err := cpu.Bus.Load(addr, 1)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = val
 		case 0b101: // lhu
-			val, err := cpu.Mem.Load(addr, 2)
+			val, err := cpu.Bus.Load(addr, 2)
 			if err != nil {
 				return err
 			}
 			cpu.Regs[rd] = val
 		case 0b110: // lwu
-			val, err := cpu.Mem.Load(addr, 4)
+			val, err := cpu.Bus.Load(addr, 4)
 			if err != nil {
 				return err
 			}
@@ -196,22 +196,22 @@ func (cpu *CPU) Execute(inst uint64) error {
 		addr := cpu.Regs[rs1] + immS
 		switch funct3 {
 		case 0b000: // sb
-			err := cpu.Mem.Store(addr, 1, cpu.Regs[rs2])
+			err := cpu.Bus.Store(addr, 1, cpu.Regs[rs2])
 			if err != nil {
 				return err
 			}
 		case 0b001: // sh
-			err := cpu.Mem.Store(addr, 2, cpu.Regs[rs2])
+			err := cpu.Bus.Store(addr, 2, cpu.Regs[rs2])
 			if err != nil {
 				return err
 			}
 		case 0b010: // sw
-			err := cpu.Mem.Store(addr, 4, cpu.Regs[rs2])
+			err := cpu.Bus.Store(addr, 4, cpu.Regs[rs2])
 			if err != nil {
 				return err
 			}
 		case 0b011: // sd
-			err := cpu.Mem.Store(addr, 8, cpu.Regs[rs2])
+			err := cpu.Bus.Store(addr, 8, cpu.Regs[rs2])
 			if err != nil {
 				return err
 			}

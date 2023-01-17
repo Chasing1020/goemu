@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 )
 
 // UART control registers.
@@ -34,27 +35,24 @@ const (
 	LsrTxIdle     = 1 << 5 // THR can accept another character to send
 )
 
+// 268435456
+
+const BufferMaxSize = 32
+
 type Uart struct {
 	Regs [Size]uint8
-	buf  Buffer
+	buf  strings.Builder
 
-	in  *bufio.Reader
-	out *bufio.Writer
+	in *bufio.Reader
 
-	loadEn chan struct{}
-}
-
-type Buffer struct {
-	maxSize int
-	strings.Builder
+	loadEnable chan struct{}
+	mu         sync.Mutex
 }
 
 func NewUart() *Uart {
 	u := new(Uart)
 	u.Regs[Lsr] |= LsrTxIdle
-	u.buf.maxSize = 32
 	u.in = bufio.NewReader(os.Stdin)
-	u.out = bufio.NewWriter(os.Stdout)
 
 	go u.InputHandler()
 
@@ -73,31 +71,32 @@ func (u *Uart) InputHandler() {
 			panic(err)
 		}
 
-		<-u.loadEn
+		<-u.loadEnable // fixme: unknown output
+		u.mu.Lock()
 		u.Regs[Rhr] = b
 		u.Regs[Lsr] |= LsrRxReady
+		u.mu.Unlock()
 	}
 }
 
-func (u *Uart) Check(addr, bytes uint64) error {
-	if addr < Base || addr > End {
-		return fmt.Errorf("invalid uart address: %x", addr)
-	}
+func (u *Uart) Check(bytes uint64) error {
 	if bytes != 1 {
 		return fmt.Errorf("invalid data bytes: %d", bytes)
 	}
 	return nil
 }
 
-func (u *Uart) Load(addr, size uint64) (uint64, error) {
-	if err := u.Check(addr, size); err != nil {
+func (u *Uart) Load(addr, bytes uint64) (uint64, error) {
+	if err := u.Check(bytes); err != nil {
 		return 0, err
 	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
 	switch addr - Base {
 	case Rhr:
 		u.Regs[Lsr] &= ^uint8(LsrRxReady)
 		if u.Regs[Lsr]&LsrRxReady == 1 {
-			u.loadEn <- struct{}{}
+			u.loadEnable <- struct{}{}
 		}
 		return uint64(u.Regs[Rhr]), nil
 	default:
@@ -105,17 +104,20 @@ func (u *Uart) Load(addr, size uint64) (uint64, error) {
 	}
 }
 
-func (u *Uart) Store(addr, size, data uint64) error {
-	if err := u.Check(addr, size); err != nil {
+func (u *Uart) Store(addr, bytes, data uint64) error {
+	if err := u.Check(bytes); err != nil {
 		return err
 	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
 	r := rune(data)
 	switch addr - Base {
 	case Thr:
-		//fmt.Print(string(rune(value)))
-		_, err := u.buf.WriteRune(r)
-		if err != nil {
+		if _, err := u.buf.WriteRune(r); err != nil {
 			return err
+		}
+		if r == '\n' || u.buf.Len() >= BufferMaxSize {
+			u.flushBuffer()
 		}
 		return nil
 	default:
@@ -124,7 +126,7 @@ func (u *Uart) Store(addr, size, data uint64) error {
 	}
 }
 
-func (u *Uart) flush() {
-	fmt.Print(u.buf)
+func (u *Uart) flushBuffer() {
+	fmt.Print(u.buf.String())
 	u.buf.Reset()
 }
