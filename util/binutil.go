@@ -3,7 +3,8 @@ package util
 import "os/exec"
 
 var (
-	crossCompile = "riscv64-linux-gnu-"
+	//crossCompile = "riscv64-linux-gnu-"
+	crossCompile = "riscv64-unknown-elf-"
 	cflags       = []string{"-nostdlib", "-fno-builtin", "-march=rv64g", "-mabi=lp64", "-O1", "-Wall", "-Ttext=0x80000000"}
 	cc           = crossCompile + "gcc"
 

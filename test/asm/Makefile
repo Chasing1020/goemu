@@ -1,9 +1,9 @@
 CROSS_COMPILE = riscv64-unknown-elf-
 CFLAGS = -nostdlib -fno-builtin -march=rv64g -mabi=lp64 -g -Wall -Ttext=0x80000000
-GDB = ${CROSS_COMPILE}gdb
-CC  = ${CROSS_COMPILE}gcc
-OBJCOPY = ${CROSS_COMPILE}objcopy
-OBJDUMP = ${CROSS_COMPILE}objdump
+GDB = $(CROSS_COMPILE)gdb
+CC  = $(CROSS_COMPILE)gcc
+OBJCOPY = $(CROSS_COMPILE)objcopy
+OBJDUMP = $(CROSS_COMPILE)objdump
 
 
 HEXDUMP = hexdump
@@ -12,19 +12,18 @@ ELF_FILES = $(wildcard *.elf)
 BIN_FILES = $(wildcard *.bin)
 
 %.bin: %.elf
-	${OBJCOPY} -O binary $^ $@
+	$(OBJCOPY) -O binary $^ $@
 
 %.elf: %.s
-	${CC} ${CFLAGS} $^ -o $@
+	${CC} $(CFLAGS) $^ -o $@
 
-.PHONY: hexdump
-hexdump: ${ELF_FILES} ${BIN_FILES}
-	${HEXDUMP} -C $^
+hexdump: $(ELF_FILES) $(BIN_FILES)
+	$(HEXDUMP) -C $^
 
-.PHONY: objdump
-objdump: ${ELF_FILES} ${BIN_FILES}
-	@${OBJDUMP} -S -M no-aliases $^
+objdump: $(ELF_FILES) $(BIN_FILES)
+	@$(OBJDUMP) -S -M no-aliases $^
 
-.PHONY: clean
 clean:
-	rm ${BIN_FILES} ${ELF_FILES}
+	rm $(BIN_FILES) $(ELF_FILES)
+
+.PHONY: hexdump objdump clean
